@@ -17,7 +17,7 @@ HEADLESS = False
 
 class SentdeBot(sc2.BotAI):
     def __init__(self, use_model=False):
-        self.MAX_WORKERS = 50
+        self.MAX_WORKERS = 50-
         self.do_something_after = 0
         self.use_model = use_model
 
