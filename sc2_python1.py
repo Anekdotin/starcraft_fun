@@ -3,21 +3,19 @@ from sc2 import run_game, maps, Race, Difficulty, position, Result
 from sc2.player import Bot, Computer
 from sc2.constants import NEXUS, PROBE, PYLON, ASSIMILATOR, GATEWAY, \
     CYBERNETICSCORE, STARGATE, VOIDRAY, OBSERVER, ROBOTICSFACILITY
+
 import random
 import cv2
 import numpy as np
-
 import keras
 import math
 
 HEADLESS = False
 
 
-
-
 class SentdeBot(sc2.BotAI):
     def __init__(self, use_model=False):
-        self.MAX_WORKERS = 50-
+        self.MAX_WORKERS = 50
         self.do_something_after = 0
         self.use_model = use_model
 
