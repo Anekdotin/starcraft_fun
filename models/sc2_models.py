@@ -8,27 +8,6 @@ import os
 import random
 
 
-def check_data():
-    choices = {"no_attacks": no_attacks,
-               "attack_closest_to_nexus": attack_closest_to_nexus,
-               "attack_enemy_structures": attack_enemy_structures,
-               "attack_enemy_start": attack_enemy_start
-               }
-
-    total_data = 0
-
-    lengths = []
-
-
-    for choice in choices:
-        print("Length of {} is: {}".format(choice, len(choices[choice])))
-        total_data += len(choices[choice])
-        lengths.append(len(choices[choice]))
-
-    print("Total data length now is:", total_data)
-    return lengths
-
-
 model = Sequential()
 
 model.add(Conv2D(32, (3, 3), padding='same',
@@ -65,6 +44,25 @@ model.compile(loss='categorical_crossentropy',
 tensorboard = TensorBoard(log_dir="logs/STAGE1")
 
 train_data_dir = "E:/gitbox/starcraft_fun/sc2_data/train_data"
+
+
+def check_data():
+    choices = {"no_attacks": no_attacks,
+               "attack_closest_to_nexus": attack_closest_to_nexus,
+               "attack_enemy_structures": attack_enemy_structures,
+               "attack_enemy_start": attack_enemy_start}
+
+    total_data = 0
+
+    lengths = []
+    for choice in choices:
+        print("Length of {} is: {}".format(choice, len(choices[choice])))
+        total_data += len(choices[choice])
+        lengths.append(len(choices[choice]))
+
+    print("Total data length now is:", total_data)
+    return lengths
+
 
 hm_epochs = 10
 

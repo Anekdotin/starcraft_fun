@@ -1,17 +1,18 @@
 import sc2
-from sc2 import run_game, maps, Race, Difficulty, position, Result
+from sc2 import run_game, maps, Race, Difficulty, Result
 from sc2.player import Bot, Computer
+from sc2 import position
 from sc2.constants import NEXUS, PROBE, PYLON, ASSIMILATOR, GATEWAY, \
-    CYBERNETICSCORE, STARGATE, VOIDRAY, OBSERVER, ROBOTICSFACILITY
-
+ CYBERNETICSCORE, STARGATE, VOIDRAY, SCV, DRONE, ROBOTICSFACILITY, OBSERVER
 import random
 import cv2
 import numpy as np
-import keras
+import os
+import time
 import math
+#import keras
 
 HEADLESS = False
-
 
 class SentdeBot(sc2.BotAI):
     def __init__(self, use_model=False):
@@ -24,15 +25,14 @@ class SentdeBot(sc2.BotAI):
         # every iteration, make sure that unit id still exists!
         self.scouts_and_spots = {}
         self.train_data = []
-        if self.use_model:
-            print("USING MODEL!")
-            self.model = keras.models.load_model("BasicCNN-10-epochs-0.0001-LR-STAGE1")
+
+
 
     def on_end(self, game_result):
         print('--- on_end called ---')
         print(game_result, self.use_model)
 
-        with open("gameout-random-vs-medium.txt", "a") as f:
+        with open("gameout-random-vs-medium.txt","a") as f:
             if self.use_model:
                 f.write("Model {}\n".format(game_result))
             else:
@@ -40,8 +40,8 @@ class SentdeBot(sc2.BotAI):
 
     async def on_step(self, iteration):
 
-        self.time = (self.state.game_loop / 22.4) / 60
-        print('Time:', self.time)
+        self.time = (self.state.game_loop/22.4) / 60
+        print('Time:',self.time)
         await self.build_scout()
         await self.scout()
         await self.distribute_workers()
@@ -59,8 +59,8 @@ class SentdeBot(sc2.BotAI):
         y = location[1]
 
         #  FIXED THIS
-        x += random.randrange(-5, 5)
-        y += random.randrange(-5, 5)
+        x += random.randrange(-5,5)
+        y += random.randrange(-5,5)
 
         if x < 0:
             print("x below")
@@ -75,14 +75,14 @@ class SentdeBot(sc2.BotAI):
             print("y above")
             y = self.game_info.map_size[1]
 
-        go_to = position.Point2(position.Pointlike((x, y)))
+        go_to = position.Point2(position.Pointlike((x,y)))
 
         return go_to
 
     async def build_scout(self):
-        if len(self.units(OBSERVER)) < math.floor(self.time / 3):
+        if len(self.units(OBSERVER)) < math.floor(self.time/3):
             for rf in self.units(ROBOTICSFACILITY).ready.noqueue:
-                print(len(self.units(OBSERVER)), self.time / 3)
+                print(len(self.units(OBSERVER)), self.time/3)
                 if self.can_afford(OBSERVER) and self.supply_left > 0:
                     await self.do(rf.train(OBSERVER))
 
@@ -93,7 +93,7 @@ class SentdeBot(sc2.BotAI):
 
         for el in self.expansion_locations:
             distance_to_enemy_start = el.distance_to(self.enemy_start_locations[0])
-            # print(distance_to_enemy_start)
+            #print(distance_to_enemy_start)
             self.expand_dis_dir[distance_to_enemy_start] = el
 
         self.ordered_exp_distances = sorted(k for k in self.expand_dis_dir)
@@ -155,22 +155,21 @@ class SentdeBot(sc2.BotAI):
         game_data = np.zeros((self.game_info.map_size[1], self.game_info.map_size[0], 3), np.uint8)
 
         draw_dict = {
-            NEXUS: [15, (0, 255, 0)],
-            PYLON: [3, (20, 235, 0)],
-            PROBE: [1, (55, 200, 0)],
-            ASSIMILATOR: [2, (55, 200, 0)],
-            GATEWAY: [3, (200, 100, 0)],
-            CYBERNETICSCORE: [3, (150, 150, 0)],
-            STARGATE: [5, (255, 0, 0)],
-            ROBOTICSFACILITY: [5, (215, 155, 0)],
-            # VOIDRAY: [3, (255, 100, 0)],
-        }
+                     NEXUS: [15, (0, 255, 0)],
+                     PYLON: [3, (20, 235, 0)],
+                     PROBE: [1, (55, 200, 0)],
+                     ASSIMILATOR: [2, (55, 200, 0)],
+                     GATEWAY: [3, (200, 100, 0)],
+                     CYBERNETICSCORE: [3, (150, 150, 0)],
+                     STARGATE: [5, (255, 0, 0)],
+                     ROBOTICSFACILITY: [5, (215, 155, 0)],
+                     #VOIDRAY: [3, (255, 100, 0)],
+                    }
 
         for unit_type in draw_dict:
             for unit in self.units(unit_type).ready:
                 pos = unit.position
-                cv2.circle(game_data, (int(pos[0]), int(pos[1])), draw_dict[unit_type][0], draw_dict[unit_type][1],
-                           -1)
+                cv2.circle(game_data, (int(pos[0]), int(pos[1])), draw_dict[unit_type][0], draw_dict[unit_type][1], -1)
 
         # from Александр Тимофеев via YT
         main_base_names = ['nexus', 'commandcenter', 'orbitalcommand', 'planetaryfortress', 'hatchery']
@@ -219,18 +218,15 @@ class SentdeBot(sc2.BotAI):
 
         plausible_supply = self.supply_cap / 200.0
 
-        military_weight = len(self.units(VOIDRAY)) / (self.supply_cap - self.supply_left)
+        military_weight = len(self.units(VOIDRAY)) / (self.supply_cap-self.supply_left)
         if military_weight > 1.0:
             military_weight = 1.0
 
-        cv2.line(game_data, (0, 19), (int(line_max * military_weight), 19), (250, 250, 200),
-                 3)  # worker/supply ratio
-        cv2.line(game_data, (0, 15), (int(line_max * plausible_supply), 15), (220, 200, 200),
-                 3)  # plausible supply (supply/200.0)
-        cv2.line(game_data, (0, 11), (int(line_max * population_ratio), 11), (150, 150, 150),
-                 3)  # population ratio (supply_left/supply)
-        cv2.line(game_data, (0, 7), (int(line_max * vespene_ratio), 7), (210, 200, 0), 3)  # gas / 1500
-        cv2.line(game_data, (0, 3), (int(line_max * mineral_ratio), 3), (0, 255, 25), 3)  # minerals minerals/1500
+        cv2.line(game_data, (0, 19), (int(line_max*military_weight), 19), (250, 250, 200), 3)  # worker/supply ratio
+        cv2.line(game_data, (0, 15), (int(line_max*plausible_supply), 15), (220, 200, 200), 3)  # plausible supply (supply/200.0)
+        cv2.line(game_data, (0, 11), (int(line_max*population_ratio), 11), (150, 150, 150), 3)  # population ratio (supply_left/supply)
+        cv2.line(game_data, (0, 7), (int(line_max*vespene_ratio), 7), (210, 200, 0), 3)  # gas / 1500
+        cv2.line(game_data, (0, 3), (int(line_max*mineral_ratio), 3), (0, 255, 25), 3)  # minerals minerals/1500
 
         # flip horizontally to make our final fix in visual representation:
         self.flipped = cv2.flip(game_data, 0)
@@ -271,7 +267,7 @@ class SentdeBot(sc2.BotAI):
 
     async def expand(self):
         try:
-            if self.units(NEXUS).amount < self.time / 2 and self.can_afford(NEXUS):
+            if self.units(NEXUS).amount < self.time/2 and self.can_afford(NEXUS):
                 await self.expand_now()
         except Exception as e:
             print(str(e))
@@ -325,21 +321,21 @@ class SentdeBot(sc2.BotAI):
 
                 if choice == 0:
                     # no attack
-                    wait = random.randrange(7, 100) / 100
+                    wait = random.randrange(7, 100)/100
                     self.do_something_after = self.time + wait
 
                 elif choice == 1:
-                    # attack_unit_closest_nexus
+                    #attack_unit_closest_nexus
                     if len(self.known_enemy_units) > 0:
                         target = self.known_enemy_units.closest_to(random.choice(self.units(NEXUS)))
 
                 elif choice == 2:
-                    # attack enemy structures
+                    #attack enemy structures
                     if len(self.known_enemy_structures) > 0:
                         target = random.choice(self.known_enemy_structures)
 
                 elif choice == 3:
-                    # attack_enemy_start
+                    #attack_enemy_start
                     target = self.enemy_start_locations[0]
 
                 if target:
@@ -353,4 +349,4 @@ class SentdeBot(sc2.BotAI):
 run_game(maps.get("AbyssalReefLE"), [
     Bot(Race.Protoss, SentdeBot(use_model=False)),
     Computer(Race.Protoss, Difficulty.Medium),
-], realtime=False)
+    ], realtime=False)
